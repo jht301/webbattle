@@ -60,33 +60,29 @@ function buildWavesForRound(r) {
         { type: 'mettaur', col: 0, row: 1 }, { type: 'mettaur', col: 2, row: 0 },
         { type: 'canodumb', col: 1, row: 0 }
     ]];
-    if (r === 3) return [
-        [{ type: 'mettaur', col: 0, row: 1 }, { type: 'mettaur', col: 2, row: 1 }],
-        [{ type: 'swordy', col: 1, row: 0 }, { type: 'canodumb', col: 0, row: 0 }]
-    ];
-    const numWaves = Math.min(1 + Math.floor(r / 3), 4);
-    const waves = [];
-    for (let w = 0; w < numWaves; w++) {
-        const count = Math.min(2 + Math.floor(r / 2), 6);
-        const wave = [];
-        const taken = new Set();
-        for (let i = 0; i < count; i++) {
-            let col, row;
-            do {
-                col = Phaser.Math.Between(0, 2);
-                row = Phaser.Math.Between(0, 2);
-            } while (taken.has(col + ',' + row));
-            taken.add(col + ',' + row);
-            const roll = Math.random();
-            let type;
-            if (roll < 0.4) type = 'mettaur';
-            else if (roll < 0.7) type = 'canodumb';
-            else type = 'swordy';
-            wave.push({ type, col, row });
-        }
-        waves.push(wave);
+    if (r === 3) return [[
+        { type: 'mettaur', col: 0, row: 1 }, { type: 'mettaur', col: 2, row: 1 },
+        { type: 'swordy', col: 1, row: 0 }, { type: 'canodumb', col: 2, row: 0 }
+    ]];
+    // Single wave, more enemies as rounds increase (max 9 = full grid)
+    const count = Math.min(3 + Math.floor(r / 2), 9);
+    const wave = [];
+    const taken = new Set();
+    for (let i = 0; i < count; i++) {
+        let col, row;
+        do {
+            col = Phaser.Math.Between(0, 2);
+            row = Phaser.Math.Between(0, 2);
+        } while (taken.has(col + ',' + row));
+        taken.add(col + ',' + row);
+        const roll = Math.random();
+        let type;
+        if (roll < 0.4) type = 'mettaur';
+        else if (roll < 0.7) type = 'canodumb';
+        else type = 'swordy';
+        wave.push({ type, col, row });
     }
-    return waves;
+    return [wave];
 }
 
 // ============================================================
@@ -473,8 +469,11 @@ class BattleScene extends Phaser.Scene {
         }[type];
 
         const sprite = this.add.sprite(pos.x, pos.y, baseStats.tex).setDepth(5);
+        // HP bar (background + fill)
+        const hpBg = this.add.rectangle(pos.x, pos.y - 24, 32, 4, 0x330000).setDepth(6);
+        const hpFill = this.add.rectangle(pos.x, pos.y - 24, 32, 4, 0xff3333).setDepth(7).setOrigin(0.5);
         return {
-            type, col, row, sprite,
+            type, col, row, sprite, hpBg, hpFill,
             hp: Math.ceil(baseStats.hp * hpMult),
             maxHp: Math.ceil(baseStats.hp * hpMult),
             baseInterval: baseStats.interval,
@@ -1036,11 +1035,12 @@ class BattleScene extends Phaser.Scene {
 
     // ---- Projectile updates ----
     updateProjectiles(time, delta) {
+        const dtScale = delta / 16.667; // normalize to 60fps
         for (const proj of this.projectiles) {
             if (!proj.alive) continue;
 
-            proj.sprite.x += proj.dx;
-            proj.sprite.y += proj.dy;
+            proj.sprite.x += proj.dx * dtScale;
+            proj.sprite.y += proj.dy * dtScale;
 
             // Bounds check
             if (proj.sprite.y < GRID_Y - 20 || proj.sprite.y > GRID_Y + ROWS * CELL_H + 20 ||
@@ -1117,6 +1117,11 @@ class BattleScene extends Phaser.Scene {
                 case 'canodumb': this.updateCanodumb(e, time, delta); break;
                 case 'swordy': this.updateSwordy(e, time, delta); break;
             }
+
+            // Update HP bar position and fill
+            e.hpBg.setPosition(e.sprite.x, e.sprite.y - 24);
+            e.hpFill.setPosition(e.sprite.x, e.sprite.y - 24);
+            e.hpFill.displayWidth = Math.max(0, (e.hp / e.maxHp) * 32);
         }
     }
 
@@ -1322,6 +1327,8 @@ class BattleScene extends Phaser.Scene {
                 duration: 400, onComplete: () => expl.destroy()
             });
             e.sprite.destroy();
+            e.hpBg.destroy();
+            e.hpFill.destroy();
             this.score += 100 * this.round;
             this.roundEnemiesDeleted++;
             this.totalDeleted++;
