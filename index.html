@@ -6,7 +6,7 @@
     <title>NetBattle Arena</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
+        html, body {
             background: #000;
             overflow: hidden;
             display: flex;
@@ -17,6 +17,8 @@
             -webkit-touch-callout: none;
             -webkit-user-select: none;
             user-select: none;
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: auto;
         }
         #game-container {
             position: relative;
@@ -25,6 +27,13 @@
 </head>
 <body>
     <div id="game-container"></div>
+    <script>
+        // Prevent swipe-back navigation on mobile browsers
+        history.pushState(null, '', location.href);
+        window.addEventListener('popstate', () => {
+            history.pushState(null, '', location.href);
+        });
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
     <script src="game.js"></script>
 </body>

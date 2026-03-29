@@ -436,8 +436,8 @@ class BattleScene extends Phaser.Scene {
                     this.fireBuster();
                 }
                 this._transferOrStopCharge(pointer.id);
-            } else {
-                // Secondary pointer released without swiping — quick tap = buster
+            } else if (!this.player.charging) {
+                // Only allow tap-to-shoot if no other finger is charging
                 this.fireBuster();
             }
         });
