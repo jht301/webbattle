@@ -327,7 +327,7 @@ class BattleScene extends Phaser.Scene {
             sprite: null,
             moveCd: 0,
             invuln: false, invulnUntil: 0,
-            chargeStart: 0, charging: false
+            chargeStart: 0, charging: false, chargePointerId: null
         };
         const pp = cellCenter(1, 5);
         this.player.sprite = this.add.sprite(pp.x, pp.y, 'player').setDepth(5);
@@ -355,8 +355,11 @@ class BattleScene extends Phaser.Scene {
         // Track if a UI button was clicked so we don't also fire buster
         this.clickedUI = false;
 
-        // Swipe / tap detection (touch + mouse)
+        // Multi-touch: track each pointer independently
+        // A touch can be a swipe (move) or a tap/hold (shoot/charge)
         const SWIPE_THRESHOLD = 30; // px minimum for a swipe
+        this.activePointers = {}; // keyed by pointer.id
+
         this.input.on('pointerdown', (pointer) => {
             if (this.roundEnding || this.customScreenOpen) return;
             this.time.delayedCall(0, () => {
@@ -364,25 +367,34 @@ class BattleScene extends Phaser.Scene {
                     this.clickedUI = false;
                     return;
                 }
-                this.player.charging = true;
-                this.player.chargeStart = this.time.now;
-                this.player.swipeStartX = pointer.x;
-                this.player.swipeStartY = pointer.y;
-                this.player.didSwipe = false;
+                this.activePointers[pointer.id] = {
+                    startX: pointer.x,
+                    startY: pointer.y,
+                    startTime: this.time.now,
+                    resolved: false // true once classified as swipe
+                };
+                // Start charging if no other pointer is already charging
+                if (!this.player.charging) {
+                    this.player.charging = true;
+                    this.player.chargeStart = this.time.now;
+                    this.player.chargePointerId = pointer.id;
+                }
             });
         });
-        this.input.on('pointerup', (pointer) => {
-            if (this.roundEnding || this.customScreenOpen) return;
-            if (!this.player.charging) return;
 
-            const dx = pointer.x - (this.player.swipeStartX || 0);
-            const dy = pointer.y - (this.player.swipeStartY || 0);
+        this.input.on('pointermove', (pointer) => {
+            if (this.roundEnding || this.customScreenOpen) return;
+            const info = this.activePointers[pointer.id];
+            if (!info || info.resolved) return;
+
+            const dx = pointer.x - info.startX;
+            const dy = pointer.y - info.startY;
             const absDx = Math.abs(dx);
             const absDy = Math.abs(dy);
 
-            // Check for swipe (move) vs tap (shoot)
+            // Classify as swipe as soon as threshold is crossed (don't wait for release)
             if (absDx > SWIPE_THRESHOLD || absDy > SWIPE_THRESHOLD) {
-                // Swipe — move in dominant direction
+                info.resolved = true;
                 let dc = 0, dr = 0;
                 if (absDx > absDy) {
                     dc = dx > 0 ? 1 : -1;
@@ -394,18 +406,40 @@ class BattleScene extends Phaser.Scene {
                 if (this.canMove(nc, nr, 'player')) {
                     this.moveEntity(this.player, nc, nr);
                 }
-                this.player.didSwipe = true;
-            } else {
-                // Tap — shoot
+                // If this pointer was the charge pointer, transfer charge to another held pointer
+                if (this.player.chargePointerId === pointer.id) {
+                    this._transferOrStopCharge(pointer.id);
+                }
+            }
+        });
+
+        this.input.on('pointerup', (pointer) => {
+            if (this.roundEnding || this.customScreenOpen) return;
+            const info = this.activePointers[pointer.id];
+            delete this.activePointers[pointer.id];
+            if (!info) return;
+
+            // If this pointer already resolved as a swipe, just clean up charge if needed
+            if (info.resolved) {
+                if (this.player.chargePointerId === pointer.id) {
+                    this._transferOrStopCharge(pointer.id);
+                }
+                return;
+            }
+
+            // This pointer was a tap/hold (not a swipe) — fire
+            if (this.player.chargePointerId === pointer.id && this.player.charging) {
                 const chargeTime = this.time.now - this.player.chargeStart;
                 if (chargeTime >= 600) {
                     this.fireChargeShot();
                 } else {
                     this.fireBuster();
                 }
+                this._transferOrStopCharge(pointer.id);
+            } else {
+                // Secondary pointer released without swiping — quick tap = buster
+                this.fireBuster();
             }
-            this.player.charging = false;
-            this.player.chargeStart = 0;
         });
 
         // Custom screen overlay state
@@ -759,6 +793,22 @@ class BattleScene extends Phaser.Scene {
         if (Phaser.Input.Keyboard.JustDown(k.SPACE) && this.customReady) {
             this.openMidRoundCustomScreen();
         }
+    }
+
+    _transferOrStopCharge(releasedId) {
+        // Find another active pointer that hasn't been resolved as a swipe
+        for (const [id, info] of Object.entries(this.activePointers)) {
+            if (Number(id) !== releasedId && !info.resolved) {
+                this.player.chargePointerId = Number(id);
+                this.player.chargeStart = info.startTime;
+                this.player.charging = true;
+                return;
+            }
+        }
+        // No other pointer — stop charging
+        this.player.charging = false;
+        this.player.chargeStart = 0;
+        this.player.chargePointerId = null;
     }
 
     fireBuster() {
@@ -1700,7 +1750,7 @@ const config = {
     parent: 'game-container',
     backgroundColor: '#0e0e24',
     input: {
-        activePointers: 1,
+        activePointers: 3,
         touch: { capture: true }
     },
     scale: {
