@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0e0e24">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     <title>NetBattle Arena</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,6 +38,33 @@
         history.pushState(null, '', location.href);
         window.addEventListener('popstate', () => {
             history.pushState(null, '', location.href);
+        });
+
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+
+        // PWA install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show install banner
+            const banner = document.createElement('div');
+            banner.id = 'install-banner';
+            banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a3a5c;color:#fff;padding:12px;text-align:center;font-family:monospace;font-size:14px;z-index:9999;display:flex;justify-content:center;align-items:center;gap:12px;';
+            banner.innerHTML = '<span>Install NetBattle Arena for the best experience!</span><button id="install-btn" style="background:#3388cc;color:#fff;border:none;padding:8px 16px;font-family:monospace;font-size:14px;border-radius:4px;">Install</button><button id="dismiss-btn" style="background:none;color:#888;border:none;padding:8px;font-family:monospace;font-size:18px;">X</button>';
+            document.body.appendChild(banner);
+
+            document.getElementById('install-btn').addEventListener('click', () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+                banner.remove();
+            });
+            document.getElementById('dismiss-btn').addEventListener('click', () => {
+                banner.remove();
+            });
         });
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
