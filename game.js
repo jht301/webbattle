@@ -815,7 +815,7 @@ class BattleScene extends Phaser.Scene {
         const pos = cellCenter(this.player.col, this.player.row);
         const spr = this.add.sprite(pos.x, pos.y - 20, 'buster_shot').setDepth(10);
         this.projectiles.push({
-            sprite: spr, dx: 0, dy: -6, damage: 1,
+            sprite: spr, dx: 0, dy: -360, damage: 1,
             owner: 'player', type: 'pixel', alive: true
         });
     }
@@ -824,7 +824,7 @@ class BattleScene extends Phaser.Scene {
         const pos = cellCenter(this.player.col, this.player.row);
         const spr = this.add.sprite(pos.x, pos.y - 20, 'charge_shot').setDepth(10);
         this.projectiles.push({
-            sprite: spr, dx: 0, dy: -5, damage: 10,
+            sprite: spr, dx: 0, dy: -300, damage: 10,
             owner: 'player', type: 'pixel', alive: true
         });
         this.cameras.main.shake(80, 0.002);
@@ -989,7 +989,7 @@ class BattleScene extends Phaser.Scene {
             case 'Cannon': {
                 const spr = this.add.sprite(pos.x, pos.y - 20, 'cannon_shot').setDepth(10);
                 this.projectiles.push({
-                    sprite: spr, dx: 0, dy: -7, damage: 40,
+                    sprite: spr, dx: 0, dy: -420, damage: 40,
                     owner: 'player', type: 'pixel', alive: true
                 });
                 break;
@@ -1074,7 +1074,7 @@ class BattleScene extends Phaser.Scene {
             case 'Spreader': {
                 const spr = this.add.sprite(pos.x, pos.y - 20, 'cannon_shot').setDepth(10).setTint(0xff3399);
                 this.projectiles.push({
-                    sprite: spr, dx: 0, dy: -5, damage: 20,
+                    sprite: spr, dx: 0, dy: -300, damage: 20,
                     owner: 'player', type: 'spreader', alive: true,
                     col: p.col
                 });
@@ -1085,12 +1085,12 @@ class BattleScene extends Phaser.Scene {
 
     // ---- Projectile updates ----
     updateProjectiles(time, delta) {
-        const dtScale = delta / 16.667; // normalize to 60fps
+        const dt = delta / 1000; // delta in seconds
         for (const proj of this.projectiles) {
             if (!proj.alive) continue;
 
-            proj.sprite.x += proj.dx * dtScale;
-            proj.sprite.y += proj.dy * dtScale;
+            proj.sprite.x += proj.dx * dt;
+            proj.sprite.y += proj.dy * dt;
 
             // Bounds check
             if (proj.sprite.y < GRID_Y - 20 || proj.sprite.y > GRID_Y + ROWS * CELL_H + 20 ||
@@ -1266,10 +1266,10 @@ class BattleScene extends Phaser.Scene {
                 // Fire at the LOCKED column, not current player position
                 const fireFrom = cellCenter(e.col, e.row);
                 const fireTo = cellCenter(e.targetCol, e.row);
-                const dx = (fireTo.x - fireFrom.x) / (ROWS * CELL_H / 2.5);
+                const dx = (fireTo.x - fireFrom.x) / (ROWS * CELL_H / 150);
                 const spr = this.add.sprite(fireFrom.x, fireFrom.y + 16, 'cannon_shot').setDepth(10).setTint(0xff4444);
                 this.projectiles.push({
-                    sprite: spr, dx: dx, dy: 2.5, damage: 15,
+                    sprite: spr, dx: dx, dy: 150, damage: 15,
                     owner: 'enemy', type: 'pixel', alive: true
                 });
                 e.timer = 0;
