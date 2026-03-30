@@ -1,11 +1,11 @@
-const CACHE_NAME = 'netbattle-v1';
+const CACHE_NAME = 'netbattle-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/game.js',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  './',
+  'index.html',
+  'game.js',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js'
 ];
 
