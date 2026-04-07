@@ -50,7 +50,6 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            // Show install banner
             const banner = document.createElement('div');
             banner.id = 'install-banner';
             banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a3a5c;color:#fff;padding:12px;text-align:center;font-family:monospace;font-size:14px;z-index:9999;display:flex;justify-content:center;align-items:center;gap:12px;';
@@ -67,7 +66,37 @@
             });
         });
     </script>
+
+    <!-- Phaser engine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js"></script>
+
+    <!-- CrazyGames SDK (no-op if not running on CrazyGames) -->
+    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+
+    <!-- Shared constants + chip definitions + helpers -->
+    <script src="src/config.js"></script>
+    <script src="src/shared.js"></script>
+
+    <!-- Data layer -->
+    <script src="src/data/storage.js"></script>
+    <script src="src/data/auth.js"></script>
+    <script src="src/data/inventory.js"></script>
+
+    <!-- Networking -->
+    <script src="src/net/ws-client.js"></script>
+
+    <!-- Scenes -->
+    <script src="src/scenes/boot.js"></script>
+    <script src="src/scenes/menu.js"></script>
+    <script src="src/scenes/custom-screen.js"></script>
+    <script src="src/scenes/battle.js"></script>
+    <script src="src/scenes/gameover.js"></script>
+    <script src="src/scenes/shop.js"></script>
+    <script src="src/scenes/trade.js"></script>
+    <script src="src/scenes/mp-lobby.js"></script>
+    <script src="src/scenes/mp-battle.js"></script>
+
+    <!-- Entry point -->
     <script src="game.js"></script>
 </body>
 </html>
