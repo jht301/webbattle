@@ -13,7 +13,6 @@
 
         init(data) {
             this.round = data.round || 1;
-            this.score = data.score || 0;
             this.totalDeleted = data.totalDeleted || 0;
             this.playerHp = data.playerHp || 100;
             this.mode = data.mode || 'training';
@@ -65,7 +64,9 @@
             // ---- HUD ----
             this.add.text(12, 12, 'MegaMan.EXE', { ...ts, color: '#00ffcc', fontSize: '14px' });
             this.add.text(12, 30, `HP: ${this.playerHp} / 100`, { ...ts, color: '#ffffff', fontSize: '13px' });
-            this.add.text(GW - 12, 12, 'SCORE: ' + this.score, { ...ts, color: '#ffcc00', fontSize: '14px' }).setOrigin(1, 0);
+            const inv = window.NBA.inventory;
+            const tok = inv && inv.getTokens ? inv.getTokens() : 0;
+            this.add.text(GW - 12, 12, '⬢ ' + tok, { ...ts, color: '#ffcc00', fontSize: '14px' }).setOrigin(1, 0);
             this.add.text(GW - 12, 30, 'ROUND: ' + this.round, { ...ts, color: '#00aaff', fontSize: '13px' }).setOrigin(1, 0);
 
             // ---- Chip select panel ----
@@ -203,7 +204,6 @@
 
             this.scene.start('BattleScene', {
                 round: this.round,
-                score: this.score,
                 totalDeleted: this.totalDeleted,
                 chipInventory: chips,
                 playerHp: this.playerHp,

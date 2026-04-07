@@ -87,7 +87,7 @@
 
         startTraining() {
             this.scene.start('CustomScreenScene', {
-                round: 1, score: 0, totalDeleted: 0,
+                round: 1, totalDeleted: 0,
                 playerHp: 100, firstRound: true, mode: 'training'
             });
         }

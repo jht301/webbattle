@@ -13,7 +13,6 @@
 
         init(data) {
             this.round = data.round || 1;
-            this.score = data.score || 0;
             this.totalDeleted = data.totalDeleted || 0;
             this.equippedChips = (data.chipInventory || []).slice(0, 5);
             this.playerStartHp = data.playerHp || 100;
@@ -173,19 +172,6 @@
             // HUD (includes chip buttons)
             this.buildHud();
 
-            // Mode-specific wiring
-            if (this.mode === 'training') {
-                this.onRoundCleared = ({ round, perfect, noReload }) => {
-                    const inv = window.NBA.inventory;
-                    if (!inv) return;
-                    let earned = 10 + round * 5;
-                    if (perfect) earned += 20;
-                    if (noReload) earned += 15;
-                    this._lastTokensEarned = earned;
-                    inv.addTokens(earned);
-                };
-            }
-
             // Round announce
             this.showMessage('ROUND ' + this.round, 1200);
         }
@@ -266,7 +252,7 @@
             this.add.rectangle(12 + 75, 54, 150, 12, 0x001a15).setOrigin(0, 0.5).setDepth(20).setStrokeStyle(1, 0x00ffcc);
             this.hpBar = this.add.rectangle(12 + 76, 54, 148, 10, 0x00ff88).setOrigin(0, 0.5).setDepth(21);
 
-            this.scoreText = this.add.text(GW - 12, 12, '', { ...ts, color: '#ffcc00', fontSize: '16px' }).setOrigin(1, 0).setDepth(20);
+            this.tokensText = this.add.text(GW - 12, 12, '', { ...ts, color: '#ffcc00', fontSize: '16px' }).setOrigin(1, 0).setDepth(20);
             this.roundText = this.add.text(GW - 12, 32, '', { ...ts, color: '#00aaff', fontSize: '14px' }).setOrigin(1, 0).setDepth(20);
 
             // Chip Reloader gauge
@@ -356,7 +342,9 @@
         updateHud() {
             this.hpText.setText(`HP: ${this.player.hp} / ${this.player.maxHp}`);
             this.hpBar.displayWidth = Math.max(0, (this.player.hp / this.player.maxHp) * 148);
-            this.scoreText.setText('SCORE: ' + this.score);
+            const inv = window.NBA.inventory;
+            const tok = inv && inv.getTokens ? inv.getTokens() : 0;
+            this.tokensText.setText('⬢ ' + tok);
             this.roundText.setText('ROUND: ' + this.round);
 
             const gaugePct = Math.min(1, this.customGauge / CUSTOM_GAUGE_MAX);
@@ -1069,7 +1057,6 @@
                 e.sprite.destroy();
                 e.hpBg.destroy();
                 e.hpFill.destroy();
-                this.score += 100 * this.round;
                 this.roundEnemiesDeleted++;
                 this.totalDeleted++;
             }
@@ -1104,39 +1091,36 @@
             this.roundEnding = true;
 
             if (won) {
-                const elapsed = (this.time.now - this.roundStartTime) / 1000;
-                let speedBonus = 0;
-                if (elapsed < 20) speedBonus = 1000 * this.round;
-                else if (elapsed < 30) speedBonus = 500 * this.round;
-                this.score += speedBonus;
-
-                const dmgPenalty = this.roundDamageTaken * 10;
-                this.score = Math.max(0, this.score - dmgPenalty);
-
-                let oneSelectBonus = 0;
-                if (this.chipSelections === 1) {
-                    oneSelectBonus = 1500;
-                    this.score += oneSelectBonus;
-                }
-
+                // ---- Training-mode token rewards ----
+                // MP rewards are handled server-side in match.js.
                 const bonusParts = [];
-                if (this.roundDamageTaken === 0) {
-                    this.score += 2000;
-                    bonusParts.push('PERFECT +2000');
-                }
-                if (oneSelectBonus > 0) {
-                    bonusParts.push('NO RELOAD +1500');
-                }
-                if (speedBonus > 0) {
-                    bonusParts.push('SPEED +' + speedBonus);
-                }
+                if (this.mode === 'training') {
+                    const elapsed = (this.time.now - this.roundStartTime) / 1000;
+                    const perfect = this.roundDamageTaken === 0;
+                    const noReload = this.chipSelections === 1;
 
-                // Hook for token rewards (training mode wires this in create())
-                if (typeof this.onRoundCleared === 'function') {
-                    try { this.onRoundCleared({ round: this.round, perfect: this.roundDamageTaken === 0, noReload: oneSelectBonus > 0, score: this.score }); } catch (_) {}
-                }
-                if (this._lastTokensEarned) {
-                    bonusParts.push('+' + this._lastTokensEarned + ' TOKENS');
+                    const base      = 10 + this.round * 5;
+                    const killBonus = this.roundEnemiesDeleted * this.round;
+                    let speedBonus  = 0;
+                    if (elapsed < 20)      speedBonus = this.round * 10;
+                    else if (elapsed < 30) speedBonus = this.round * 5;
+                    const perfectBonus  = perfect ? 25 : 0;
+                    const noReloadBonus = noReload ? 15 : 0;
+                    const dmgPenalty    = Math.floor(this.roundDamageTaken / 10);
+
+                    const subtotal = base + killBonus + speedBonus + perfectBonus + noReloadBonus;
+                    const earned = Math.max(0, subtotal - dmgPenalty);
+
+                    bonusParts.push('CLEAR +' + base);
+                    if (killBonus > 0)     bonusParts.push('KILLS +' + killBonus);
+                    if (speedBonus > 0)    bonusParts.push('SPEED +' + speedBonus);
+                    if (perfectBonus > 0)  bonusParts.push('PERFECT +' + perfectBonus);
+                    if (noReloadBonus > 0) bonusParts.push('NO RELOAD +' + noReloadBonus);
+                    if (dmgPenalty > 0)    bonusParts.push('DAMAGE -' + dmgPenalty);
+                    bonusParts.push('TOTAL ⬢' + earned);
+
+                    const inv = window.NBA.inventory;
+                    if (inv && earned > 0) inv.addTokens(earned);
                 }
 
                 this.showMessage('ROUND CLEAR!', 1000);
@@ -1151,9 +1135,9 @@
                 this.time.delayedCall(totalDelay, () => {
                     this.scene.start(this.nextSceneOnWin, {
                         round: this.round + 1,
-                        score: this.score,
                         totalDeleted: this.totalDeleted,
-                        playerHp: this.player.hp
+                        playerHp: this.player.hp,
+                        mode: this.mode,
                     });
                 });
             } else {
@@ -1166,9 +1150,8 @@
 
                 this.time.delayedCall(2500, () => {
                     this.scene.start(this.nextSceneOnLose, {
-                        score: this.score,
                         round: this.round,
-                        totalDeleted: this.totalDeleted
+                        totalDeleted: this.totalDeleted,
                     });
                 });
             }

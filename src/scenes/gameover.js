@@ -8,7 +8,6 @@
         constructor() { super('GameOverScene'); }
 
         init(data) {
-            this.finalScore = data.score || 0;
             this.finalRound = data.round || 1;
             this.totalDeleted = data.totalDeleted || 0;
         }
@@ -21,11 +20,14 @@
                 stroke: '#440000', strokeThickness: 4
             }).setOrigin(0.5);
 
-            this.add.text(GW / 2, 230, 'FINAL SCORE', {
+            const inv = window.NBA.inventory;
+            const tok = inv && inv.getTokens ? inv.getTokens() : 0;
+
+            this.add.text(GW / 2, 230, 'TOKENS', {
                 fontFamily: 'monospace', fontSize: '16px', color: '#888888'
             }).setOrigin(0.5);
 
-            this.add.text(GW / 2, 270, '' + this.finalScore, {
+            this.add.text(GW / 2, 270, '⬢ ' + tok, {
                 fontFamily: 'monospace', fontSize: '40px', color: '#ffcc00',
                 stroke: '#332200', strokeThickness: 3
             }).setOrigin(0.5);
